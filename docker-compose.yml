@@ -1,0 +1,73 @@
+version: '2'
+services:
+  nginx-proxy:
+    image: jwilder/nginx-proxy:latest
+    ports:
+     - "80:80"
+     - "443:443"
+    volumes:
+      - '/home/docker/nginx-proxy/ssl:/etc/nginx/certs:ro'
+      - '/etc/nginx/vhost.d'
+      - '/usr/share/nginx/html'
+      - '/var/run/docker.sock:/tmp/docker.sock:ro'
+      
+  letsencrypt-nginx-proxy-companion:
+    image: jrcs/letsencrypt-nginx-proxy-companion:latest
+    volumes_from:
+      - nginx-proxy
+    volumes:
+      - '/home/docker/nginx-proxy/ssl:/etc/nginx/certs:rw'
+      - '/var/run/docker.sock:/var/run/docker.sock:ro'
+      
+  postgres-server:
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_PASSWORD: ${database_password}
+      POSTGRES_USER: ${database_user}
+    labels:
+      io.rancher.sidekicks: postgres-data
+    tty: true
+    image: postgres
+    stdin_open: true
+    volumes_from:
+      - postgres-data
+      
+  odoo-server:
+    image: pasgou/odoo-docker:Odoo9-and-Clouder090
+    links: postgres-server:db
+    labels:
+      io.rancher.sidekicks: 
+        - odoo-data
+    environment:
+      VIRTUAL_PORT: 8069
+      VIRTUAL_HOST: ${domains_names}
+      LETSENCRYPT_HOST: ${domains_names}
+      LETSENCRYPT_EMAIL: ${letsenscript_contact_email}
+    volumes_from:
+      - odoo-data
+      
+volumes:
+  postgres-data:
+    labels:
+      io.rancher.container.start_once: 'true'
+    image: alpine
+    volumes:
+      - /var/lib/postgresql/data/pgdata:/var/lib/postgresql/data/pgdata
+    net: none
+    command: /bin/true
+  odoo-data:
+    labels:
+      io.rancher.container.start_once: 'true'
+    image: alpine
+    volumes:
+    - '/home/docker/odoo/filestore:/opt/odoo/filestore'
+    - '/home/docker/odoo/logs:/opt/odoo/logs'
+    - '/home/docker/odoo/CE_inherited:/opt/odoo/CE_inherited'
+    - '/home/docker/odoo/enterprise:/opt/odoo/enterprise'
+    - '/home/docker/odoo/ENT_inherit:/opt/odoo/ENT_inherit'
+    - '/home/docker/odoo/external:/opt/odoo/external'
+    - '/home/docker/odoo/nonfree:/opt/odoo/nonfree'
+    - '/home/docker/odoo/private:/opt/odoo/private'
+    - '/home/docker/odoo/conf:/opt/odoo/conf'
+    net: none
+    command: /bin/true

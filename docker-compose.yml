@@ -33,7 +33,7 @@ services:
       - postgres-data
       
   odoo-server:
-    image: pasgou/odoo-docker:Odoo9-and-Clouder090
+    image: pasgou/odoo-docker:latest
     links: postgres-server:db
     labels:
       io.rancher.sidekicks: 
